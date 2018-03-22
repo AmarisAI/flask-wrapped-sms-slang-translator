@@ -1,15 +1,17 @@
-from flask import Flask, render_template, redirect, url_for
+import os
+from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
-from flask_wtf import FlaskForm 
-from wtforms import StringField, PasswordField, BooleanField
-from wtforms.validators import InputRequired, Email, Length
 from flask_sqlalchemy  import SQLAlchemy
+from flask import Flask, render_template, redirect, url_for
+from wtforms.validators import InputRequired, Email, Length
+from wtforms import StringField, PasswordField, BooleanField
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'Thisissupposedtobesecret!'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///text.db'
+app.config['SECRET_KEY'] = 'P@55w0rd1234'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///credentials.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 bootstrap = Bootstrap(app)
 db = SQLAlchemy(app)
 
@@ -31,14 +33,13 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 class LoginForm(FlaskForm):
-    username = StringField('username', validators=[InputRequired(), Length(min=4, max=15)])
-    password = PasswordField('password', validators=[InputRequired(), Length(min=8, max=80)])
+    username = StringField('username', validators=[InputRequired(), Length(min=1, max=15)])
+    password = PasswordField('password', validators=[InputRequired(), Length(min=1, max=80)])
     remember = BooleanField('remember me')
 
 class RegisterForm(FlaskForm):
-    email = StringField('email', validators=[InputRequired(), Email(message='Invalid email'), Length(max=50)])
-    username = StringField('username', validators=[InputRequired(), Length(min=4, max=15)])
-    password = PasswordField('password', validators=[InputRequired(), Length(min=8, max=80)])
+    username = StringField('username', validators=[InputRequired(), Length(min=1, max=15)])
+    password = PasswordField('password', validators=[InputRequired(), Length(min=1, max=80)])
 
 
 @app.route('/')
@@ -66,11 +67,12 @@ def signup():
 
     if form.validate_on_submit():
         hashed_password = generate_password_hash(form.password.data, method='sha256')
-        new_user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+        new_user = User(username=form.username.data, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
 
-        return '<h1>New user has been created!</h1>'
+        return redirect(url_for('dashboard'))
+        # return '<h1>New user has been created!</h1>'
         #return '<h1>' + form.username.data + ' ' + form.email.data + ' ' + form.password.data + '</h1>'
 
     return render_template('signup.html', form=form)
@@ -87,8 +89,13 @@ def logout():
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    db.create_all()
-    guest = User("temasek", "winbig")
-    db.session.add(guest)
-    db.session.commit()
+
+    db_name = 'credentials.db'
+    if os.path.exists(db_name):
+        os.remove(db_name)
+    else:
+        db.create_all()
+        # guest = User("temasek", "winbig")
+        # db.session.add(guest)
+        # db.session.commit()
     app.run()
